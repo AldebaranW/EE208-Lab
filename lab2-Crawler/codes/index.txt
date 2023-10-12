@@ -1,0 +1,10 @@
+'http://www.sjtu.edu.cn'	httpwww.sjtu.edu.cn
+'https://vs.sjtu.edu.cn/'	httpsvs.sjtu.edu.cn
+'https://vs.sjtu.edu.cn/jtdx/index/imagesList'	httpsvs.sjtu.edu.cnjtdxindeximagesList
+'https://vs.sjtu.edu.cn/jtdx/index/imagesList?themeId=51'	httpsvs.sjtu.edu.cnjtdxindeximagesListthemeId51
+'https://vs.sjtu.edu.cn/jtdx/index/imagesList?themeId=41'	httpsvs.sjtu.edu.cnjtdxindeximagesListthemeId41
+'https://vs.sjtu.edu.cn/jtdx/index/imagesList?themeId=49'	httpsvs.sjtu.edu.cnjtdxindeximagesListthemeId49
+'https://vs.sjtu.edu.cn/jtdx/index/imagesList?themeId=45'	httpsvs.sjtu.edu.cnjtdxindeximagesListthemeId45
+'https://vs.sjtu.edu.cn/jtdx/index/imagesList?themeId=54'	httpsvs.sjtu.edu.cnjtdxindeximagesListthemeId54
+'https://vs.sjtu.edu.cn/jtdx/index/imagesList?themeId=40'	httpsvs.sjtu.edu.cnjtdxindeximagesListthemeId40
+'https://vs.sjtu.edu.cn/jtdx/index/imagesList?themeId=42'	httpsvs.sjtu.edu.cnjtdxindeximagesListthemeId42
