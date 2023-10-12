@@ -8,12 +8,13 @@ from datetime import datetime
 # from java.io import File
 from java.nio.file import Paths
 from org.apache.lucene.analysis.miscellaneous import LimitTokenCountAnalyzer
-from org.apache.lucene.analysis.standard import StandardAnalyzer
+from org.apache.lucene.analysis.standard import StandardAnalyzer, WhitespaceAnalyzer
 from org.apache.lucene.document import Document, Field, FieldType, StringField
 from org.apache.lucene.index import FieldInfo, IndexWriter, IndexWriterConfig, IndexOptions
 from org.apache.lucene.store import SimpleFSDirectory
 from org.apache.lucene.util import Version
 from bs4 import BeautifulSoup
+import jieba
 
 """
 This class is loosely based on the Lucene (java implementation) demo class 
@@ -45,7 +46,7 @@ class IndexFiles(object):
 
         # store = SimpleFSDirectory(File(storeDir).toPath())
         store = SimpleFSDirectory(Paths.get(storeDir))
-        analyzer = StandardAnalyzer()
+        analyzer = WhitespaceAnalyzer()
         analyzer = LimitTokenCountAnalyzer(analyzer, 1048576)
         config = IndexWriterConfig(analyzer)
         config.setOpenMode(IndexWriterConfig.OpenMode.CREATE)
@@ -94,6 +95,8 @@ class IndexFiles(object):
                 doc.add(Field("title", title, t1))
                 doc.add(Field("url", urls[i], t1))
                 if len(contents) > 0:
+                    contents = jieba.cut(contents, cut_all=False)
+                    contents = ' '.join(contents)
                     doc.add(Field("contents", contents, t2))
                 else:
                     print("warning: no content in %s" % filename)
