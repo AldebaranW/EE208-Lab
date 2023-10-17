@@ -8,13 +8,15 @@ from datetime import datetime
 # from java.io import File
 from java.nio.file import Paths
 from org.apache.lucene.analysis.miscellaneous import LimitTokenCountAnalyzer
-from org.apache.lucene.analysis.standard import StandardAnalyzer, WhitespaceAnalyzer
+from org.apache.lucene.analysis.standard import StandardAnalyzer
+from org.apache.lucene.analysis.core import WhitespaceAnalyzer
 from org.apache.lucene.document import Document, Field, FieldType, StringField
 from org.apache.lucene.index import FieldInfo, IndexWriter, IndexWriterConfig, IndexOptions
 from org.apache.lucene.store import SimpleFSDirectory
 from org.apache.lucene.util import Version
 from bs4 import BeautifulSoup
 import jieba
+import re
 
 """
 This class is loosely based on the Lucene (java implementation) demo class 
@@ -76,9 +78,10 @@ class IndexFiles(object):
         filenames = []
         urls = []
         with open(indexfile, 'r') as f:
-            line = f.readline().split()
-            filenames.append(line[1])
-            urls.append(line[0])
+            for line in f.readlines(): 
+                line = line.split()
+                filenames.append(line[1])
+                urls.append(line[0])
 
         for i in range(len(filenames)):
             try:
@@ -89,6 +92,8 @@ class IndexFiles(object):
                 file.close()
                 soup = BeautifulSoup(contents, 'html.parser')
                 title = soup.find("head").find("title").string
+                contents = ''.join(soup.findAll(text=True))
+                contents = re.sub("[^\u4e00-\u9fa5]", "", contents)
                 doc = Document()
                 doc.add(Field("name", filename, t1))
                 doc.add(Field("path", path, t1))
@@ -102,7 +107,7 @@ class IndexFiles(object):
                     print("warning: no content in %s" % filename)
                 writer.addDocument(doc)
             except Exception as e:
-                print("Failed in indexDocs:", e)
+                continue
 
 if __name__ == '__main__':
     lucene.initVM()#vmargs=['-Djava.awt.headless=true'])

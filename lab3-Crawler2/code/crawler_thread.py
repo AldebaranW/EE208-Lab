@@ -109,7 +109,7 @@ if __name__ == '__main__':
         seed = sys.argv[1]
         max_page = sys.argv[2]
     except:
-        seed = "http://www.sjtu.edu.cn"
+        seed = "http://www.baidu.com"
         max_page = 1000
     graph, crawled = crawl(seed, max_page)
 
