@@ -4,11 +4,14 @@ import sys, os, lucene, time, re
 from java.io import File
 from org.apache.lucene.analysis.miscellaneous import LimitTokenCountAnalyzer
 from org.apache.lucene.analysis.standard import StandardAnalyzer
+from org.apache.lucene.analysis.core import WhitespaceAnalyzer
 from org.apache.lucene.document import Document, Field, FieldType, StringField, TextField
-from org.apache.lucene.index import FieldInfo, IndexWriter, IndexReader ,IndexWriterConfig, Term, DirectoryReader
+from org.apache.lucene.index import FieldInfo, IndexWriter, IndexReader ,IndexWriterConfig, Term, DirectoryReader, IndexOptions
 from org.apache.lucene.store import SimpleFSDirectory
 from org.apache.lucene.search import IndexSearcher, TermQuery
 from org.apache.lucene.util import Version
+from bs4 import BeautifulSoup
+import jieba
 
 class IndexUpdate(object):
     def __init__(self, storeDir):
@@ -16,13 +19,6 @@ class IndexUpdate(object):
         print('lucene', lucene.VERSION)
         self.dir = SimpleFSDirectory(File(storeDir).toPath())
 
-
-    def getTxtAttribute(self, contents, attr):
-        m = re.search(attr + ': (.*?)\n',contents)
-        if m:
-            return m.group(1)
-        else:
-            return ''
         
     def testDelete(self, fieldName, searchString):
         config = IndexWriterConfig(self.getAnalyzer())
@@ -32,48 +28,53 @@ class IndexUpdate(object):
         writer.close()
 
         
-    def testAdd(self, filepath):
+    def testAdd(self, filepath, url):
+        t1 = FieldType()
+        t1.setStored(True)
+        t1.setTokenized(False)
+        
+        t2 = FieldType()
+        t2.setStored(False)
+        t2.setTokenized(True)
+        t2.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) 
+
         config = IndexWriterConfig(self.getAnalyzer())
         config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND)
         writer = IndexWriter(self.dir, config)
         
-        file = open(filepath, encoding='gbk')
+        file = open(filepath, encoding='utf-8')
         contents = file.read()
         file.close()
+
+        soup = BeautifulSoup(contents, 'html.parser')
+        title = soup.find("head").find("title").string
+        encoding = [i.get('charset') for i in soup.find("head").findAll('meta') if i.get('charset') != None]
+        if not len(encoding):
+            encoding = 'utf-8'
+        else:
+            encoding = encoding[0]
+        if encoding.upper() != "UTF-8":
+            contents = contents.encode('GBK')
+
+        contents = re.sub("[^\u4e00-\u9fa5]", "", contents)
+        site = url.split('/')[2]
+        site = ' '.join(site.split('.'))
+        filename = filepath.split('/')[-1]
+        print(filename)
+        
         doc = Document()
-        # doc.add(Field("name", os.path.basename(filepath),
-        #                      Field.Store.YES,
-        #                      Field.Index.NOT_ANALYZED))
-        doc.add(StringField('name', os.path.basename(filepath), Field.Store.YES))
-        # doc.add(Field("path", filepath,
-        #                      Field.Store.YES,
-        #                      Field.Index.NOT_ANALYZED))
-        doc.add(StringField('path', filepath, Field.Store.YES))
+        doc.add(Field("name", filename, t1))
+        doc.add(Field("title", title, t1))
+        doc.add(Field("url", url, t1))
+        doc.add(Field("site", site, t2))
         if len(contents) > 0:
-            title = self.getTxtAttribute(contents, 'Title')
-            author = self.getTxtAttribute(contents, 'Author')
-            language = self.getTxtAttribute(contents, 'Language')
-            # doc.add(Field("Title", title,
-            #                      Field.Store.YES,
-            #                      Field.Index.ANALYZED))
-            # doc.add(Field("Author", author,
-            #                      Field.Store.YES,
-            #                      Field.Index.ANALYZED))
-            # doc.add(Field("Language", language,
-            #                      Field.Store.YES,
-            #                      Field.Index.ANALYZED))
-            # doc.add(Field("contents", contents,
-            #                      Field.Store.NO,
-            #                      Field.Index.ANALYZED))
-            doc.add(TextField('title', title, Field.Store.YES))
-            doc.add(TextField('author', author, Field.Store.YES))
-            doc.add(TextField('language', language, Field.Store.YES))
-            doc.add(TextField('contents', contents, Field.Store.YES))
+            contents = jieba.cut(contents, cut_all=False)
+            contents = ' '.join(contents)
+            doc.add(Field("contents", contents, t2))
         else:
             print("warning: no content in %s" % filename)
         writer.addDocument(doc)
         writer.close()
-
 
     def getHitCount(self, fieldName, searchString):
         reader = DirectoryReader.open(self.dir) #readOnly = True
@@ -91,20 +92,20 @@ class IndexUpdate(object):
 
 
     def getAnalyzer(self):
-        return StandardAnalyzer()
+        return WhitespaceAnalyzer()
 
 if __name__ == '__main__':
     try:
-        fn = 'pg17565.txt'
+        fn = 'httpwww.baidu.com'
         index = IndexUpdate('index')
-        print(index.getHitCount('name', fn))
+        print(index.getHitCount ('name', fn))
 
-        print('delete %s' % fn)
-        index.testDelete('name', fn)
-        index.getHitCount('name', fn)
+        # print('delete %s' % fn)
+        # index.testDelete('name', fn)
+        # index.getHitCount('name', fn)
 
         print('add %s' % fn)
-        index.testAdd('testfolder/%s' % fn)
+        index.testAdd('html/%s' % fn, 'http://www.baidu.com')
         index.getHitCount('name', fn)
     except Exception as e:
         print("Failed: ", e)

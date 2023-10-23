@@ -81,9 +81,12 @@ def crawl(seed, max_page):
     return graph, crawled
     
 def crawl_per_thread(tocrawl, crawled, graph, maxpage):
+    count = 0
     if not tocrawl:
         time.sleep(0.5)
+        
     while len(crawled) <= maxpage:
+        count = 0
         try:
             page = tocrawl.get()
             if page not in crawled:
@@ -98,7 +101,10 @@ def crawl_per_thread(tocrawl, crawled, graph, maxpage):
                 graph[page] = outlinks
                 lock.release()
         except:
-            pass
+            count += 1
+        
+        if count > 10:
+            return
     
     return
        
@@ -109,7 +115,7 @@ if __name__ == '__main__':
         seed = sys.argv[1]
         max_page = sys.argv[2]
     except:
-        seed = "http://www.baidu.com"
+        seed = "https://news.163.com/"
         max_page = 1000
     graph, crawled = crawl(seed, max_page)
 

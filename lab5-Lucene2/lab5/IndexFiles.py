@@ -2,17 +2,21 @@
 
 INDEX_DIR = "IndexFiles.index"
 
-import sys, os, lucene, threading, time, re
+import sys, os, lucene, threading, time
 from datetime import datetime
 
-from java.io import File
-from java.nio.file import Path
+# from java.io import File
+from java.nio.file import Paths
 from org.apache.lucene.analysis.miscellaneous import LimitTokenCountAnalyzer
 from org.apache.lucene.analysis.standard import StandardAnalyzer
+from org.apache.lucene.analysis.core import WhitespaceAnalyzer
 from org.apache.lucene.document import Document, Field, FieldType, StringField, TextField
-from org.apache.lucene.index import FieldInfo, IndexWriter, IndexWriterConfig
+from org.apache.lucene.index import FieldInfo, IndexWriter, IndexWriterConfig, IndexOptions
 from org.apache.lucene.store import SimpleFSDirectory
 from org.apache.lucene.util import Version
+from bs4 import BeautifulSoup
+import jieba
+import re
 
 """
 This class is loosely based on the Lucene (java implementation) demo class 
@@ -37,18 +41,20 @@ class Ticker(object):
 class IndexFiles(object):
     """Usage: python IndexFiles <doc_directory>"""
 
-    def __init__(self, root, storeDir, analyzer):
+    def __init__(self, root, storeDir, indexfile):
 
         if not os.path.exists(storeDir):
             os.mkdir(storeDir)
 
-        store = SimpleFSDirectory(File(storeDir).toPath())
+        # store = SimpleFSDirectory(File(storeDir).toPath())
+        store = SimpleFSDirectory(Paths.get(storeDir))
+        analyzer = WhitespaceAnalyzer()
         analyzer = LimitTokenCountAnalyzer(analyzer, 1048576)
         config = IndexWriterConfig(analyzer)
         config.setOpenMode(IndexWriterConfig.OpenMode.CREATE)
         writer = IndexWriter(store, config)
 
-        self.indexDocs(root, writer)
+        self.indexDocs(root, writer, indexfile)
         ticker = Ticker()
         print('commit index')
         threading.Thread(target=ticker.run).start()
@@ -57,75 +63,74 @@ class IndexFiles(object):
         ticker.tick = False
         print('done')
 
-    def getTxtAttribute(self, contents, attr):
-        m = re.search(attr + ': (.*?)\n',contents)
-        if m:
-            return m.group(1)
-        else:
-            return ''
-    def indexDocs(self, root, writer):   
-        for root, dirnames, filenames in os.walk(root):
-            for filename in filenames:
-                if not filename.endswith('.txt'):
-                    continue
-                print("adding", filename)
-                # try:
+    def indexDocs(self, root, writer, indexfile):
+
+        t1 = FieldType()
+        t1.setStored(True)
+        t1.setTokenized(False)
+        t1.setIndexOptions(IndexOptions.NONE)  
+        
+        t2 = FieldType()
+        t2.setStored(False)
+        t2.setTokenized(True)
+        t2.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)  
+        
+        filenames = []
+        urls = []
+        with open(indexfile, 'r') as f:
+            for line in f.readlines(): 
+                line = line.split()
+                filenames.append(line[1])
+                urls.append(line[0])
+
+        for i in range(len(filenames)):
+            try:
+                filename = filenames[i]
                 path = os.path.join(root, filename)
-                file = open(path, encoding='utf8')
+                file = open(path, encoding='utf-8')
                 contents = file.read()
                 file.close()
+                if contents == None:
+                    continue
+
+                soup = BeautifulSoup(contents, 'html.parser')
+                title = soup.find("head").find("title").string
+                encoding = [i.get('charset') for i in soup.find("head").findAll('meta') if i.get('charset') != None]
+                if not len(encoding):
+                    encoding = 'utf-8'
+                else:
+                    encoding = encoding[0]
+                if encoding.upper() != "UTF-8":
+                    contents = contents.encode('GBK')
+
+                contents = re.sub("[^\u4e00-\u9fa5]", "", contents)
+                site = urls[i].split('/')[2]
+                site = ' '.join(site.split('.'))
+                
                 doc = Document()
-                # doc.add(Field("name", filename,
-                #                      Field.Store.YES,
-                #                      Field.Index.NOT_ANALYZED))
-                doc.add(StringField("name", filename, Field.Store.YES))
-                # doc.add(Field("path", path,
-                #                      Field.Store.YES,
-                #                      Field.Index.NOT_ANALYZED))
-                doc.add(StringField("path", path, Field.Store.YES))
+                doc.add(Field("name", filename, t1))
+                doc.add(Field("path", path, t1))
+                doc.add(Field("title", title, t1))
+                doc.add(Field("url", urls[i], t1))
+                doc.add(Field("site", site, t2))
                 if len(contents) > 0:
-                    title = self.getTxtAttribute(contents, 'Title')
-                    author = self.getTxtAttribute(contents, 'Author')
-                    language = self.getTxtAttribute(contents, 'Language')
-                    # doc.add(Field("title", title,
-                    #                      Field.Store.YES,
-                    #                      Field.Index.ANALYZED))
-                    # doc.add(Field("author", author,
-                    #                      Field.Store.YES,
-                    #                      Field.Index.ANALYZED))
-                    # doc.add(Field("language", language,
-                    #                      Field.Store.YES,
-                    #                      Field.Index.ANALYZED))
-                    # doc.add(Field("contents", contents,
-                    #                      Field.Store.NO,
-                    #                      Field.Index.ANALYZED))
-                    doc.add(TextField('title', title, Field.Store.YES))
-                    doc.add(TextField('author', author, Field.Store.YES))
-                    doc.add(TextField('language', language, Field.Store.YES))
-                    doc.add(TextField('contents', contents, Field.Store.YES))
+                    contents = jieba.cut(contents, cut_all=False)
+                    contents = ' '.join(contents)
+                    doc.add(Field("contents", contents, t2))
                 else:
                     print("warning: no content in %s" % filename)
+                
                 writer.addDocument(doc)
-                # except Exception as e:
-                #     print("Failed in indexDocs:", e)
+            except Exception as e:
+                continue
 
 if __name__ == '__main__':
-    """
-    if len(sys.argv) < 2:
-        print IndexFiles.__doc__
-        sys.exit(1)
-    """
-    lucene.initVM(vmargs=['-Djava.awt.headless=true'])
+    lucene.initVM()#vmargs=['-Djava.awt.headless=true'])
     print('lucene', lucene.VERSION)
+    # import ipdb; ipdb.set_trace()
     start = datetime.now()
     try:
-        """
-        base_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-        IndexFiles(sys.argv[1], os.path.join(base_dir, INDEX_DIR),
-                   StandardAnalyzer(Version.LUCENE_CURRENT))
-                   """
-        analyzer = StandardAnalyzer()
-        IndexFiles('testfolder', "index", analyzer)
+        IndexFiles('html', "index", 'index.txt')
         end = datetime.now()
         print(end - start)
     except Exception as e:

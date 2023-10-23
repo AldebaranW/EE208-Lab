@@ -7,6 +7,7 @@ import sys, os, lucene
 from java.io import File
 from java.nio.file import Path
 from org.apache.lucene.analysis.standard import StandardAnalyzer
+from org.apache.lucene.analysis.core import WhitespaceAnalyzer
 from org.apache.lucene.index import DirectoryReader
 from org.apache.lucene.queryparser.classic import QueryParser
 from org.apache.lucene.store import SimpleFSDirectory
@@ -14,6 +15,7 @@ from org.apache.lucene.search import IndexSearcher
 from org.apache.lucene.util import Version
 from org.apache.lucene.search import BooleanQuery
 from org.apache.lucene.search import BooleanClause
+import jieba
 
 """
 This script is loosely based on the Lucene (java implementation) demo class 
@@ -36,7 +38,7 @@ def parseCommand(command):
                    'contents': ' contenance',
                    'title': ' henri'}
     '''
-    allowed_opt = ['title', 'author', 'language']
+    allowed_opt = ['title', 'name', 'site', 'url']
     command_dict = {}
     opt = 'contents'
     for i in command.split(' '):
@@ -44,7 +46,10 @@ def parseCommand(command):
             opt, value = i.split(':')[:2]
             opt = opt.lower()
             if opt in allowed_opt and value != '':
-                command_dict[opt] = command_dict.get(opt, '') + ' ' + value
+                if opt == 'site':
+                    value = value.split('.')
+                    value = ' AND '.join(value)
+                command_dict[opt] = (command_dict.get(opt, '') + ' ' + value).strip()
         else:
             command_dict[opt] = command_dict.get(opt, '') + ' ' + i
     return command_dict
@@ -73,11 +78,10 @@ def run(searcher, analyzer):
             doc = searcher.doc(scoreDoc.doc)
 ##            explanation = searcher.explain(query, scoreDoc.doc)
             print("------------------------")
-            print('path:', doc.get("path"))
             print('name:', doc.get("name"))
+            print('path:', doc.get("path"))
             print('title:', doc.get('title'))
-            print('author:', doc.get('author'))
-            print('language:', doc.get('language'))
+            print('url:', doc.get('url'))
 ##            print explanation
 
 
@@ -88,6 +92,6 @@ if __name__ == '__main__':
     #base_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
     directory = SimpleFSDirectory(File(STORE_DIR).toPath())
     searcher = IndexSearcher(DirectoryReader.open(directory))
-    analyzer = StandardAnalyzer()
+    analyzer = WhitespaceAnalyzer()
     run(searcher, analyzer)
     del searcher

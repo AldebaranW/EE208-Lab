@@ -68,12 +68,12 @@ class IndexFiles(object):
         t1 = FieldType()
         t1.setStored(True)
         t1.setTokenized(False)
-        t1.setIndexOptions(IndexOptions.NONE)  # Not Indexed
+        t1.setIndexOptions(IndexOptions.NONE)  
         
         t2 = FieldType()
         t2.setStored(False)
         t2.setTokenized(True)
-        t2.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)  # Indexes documents, frequencies and positions.
+        t2.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)  
         
         filenames = []
         urls = []
@@ -90,10 +90,19 @@ class IndexFiles(object):
                 file = open(path, encoding='utf-8')
                 contents = file.read()
                 file.close()
+
                 soup = BeautifulSoup(contents, 'html.parser')
                 title = soup.find("head").find("title").string
-                contents = ''.join(soup.findAll(text=True))
+                encoding = [i.get('charset') for i in soup.find("head").findAll('meta') if i.get('charset') != None]
+                if not len(encoding):
+                    encoding = 'utf-8'
+                else:
+                    encoding = encoding[0]
+                if encoding.upper() != "UTF-8":
+                    contents = contents.encode('GBK')
+
                 contents = re.sub("[^\u4e00-\u9fa5]", "", contents)
+                
                 doc = Document()
                 doc.add(Field("name", filename, t1))
                 doc.add(Field("path", path, t1))
