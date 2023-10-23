@@ -1,0 +1,3 @@
+index2中包含了testfolder的索引，直接运行SearchFiles.py可以得到结果
+
+在IndexFiles和SearchFiles中修改使用的Similarity类可进行测试
