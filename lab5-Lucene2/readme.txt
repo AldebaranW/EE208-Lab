@@ -1,1 +1,0 @@
-文件中的两个index文件夹分别是组合搜索和图片搜索的索引文件夹，可以直接使用python SearchFiles.py/SearchPicture.py进行搜索
