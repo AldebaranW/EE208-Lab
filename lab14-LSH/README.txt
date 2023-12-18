@@ -1,0 +1,4 @@
+使用方法：
+如要使用HOG特征提取方法，需安装scikit-image库
+
+pre_process中get_feature对应颜色直方图，get_feature2对应HOG方法，在LSH.py的输入中更改方法类别即可

@@ -15,7 +15,7 @@ class LSH:
         self.hash_tables = [dict() for _ in range(tables_num)]
         self.I = np.random.randint(12, size=int(np.log2(tables_num)))
 
-    def _hash(self, input):
+    def hash(self, input):
         project = ''.join([self.num[input[i]] for i in range(len(input))])
         hash_val = ''.join([project[i] for i in self.I])
         hash_val = int(hash_val, base=2)
@@ -25,13 +25,13 @@ class LSH:
     def insert(self, inputs, index):
         inputs = np.array(inputs)
 
-        hash_index = self._hash(inputs)
+        hash_index = self.hash(inputs)
         self.hash_tables[hash_index].setdefault(tuple(inputs.tolist()), []).append(index)
         
 
     def query(self, inputs, nums=3):
         inputs = np.array(inputs)
-        hash_val = self._hash(inputs)
+        hash_val = self.hash(inputs)
         candidate_dict = self.hash_tables[hash_val]
 
         candidates = sorted(
@@ -58,17 +58,17 @@ dir = os.listdir(paths)
 
 for path in dir:
     img = cv2.imread(os.path.join(paths, path))
-    # feature = get_feature(img)
     feature = get_feature2(img)
+    # feature = get_feature2(img)
     lsh.insert(feature, path)
 
-for path in dir:
-    print(path)
-    tg = cv2.imread(os.path.join(paths, path))
-    # feature = get_feature(tg)
-    feature = get_feature2(tg)
-    res = np.array(lsh.query(feature))
-    print(res)
+# for path in dir:
+#     print(path)
+#     tg = cv2.imread(os.path.join(paths, path))
+#     # feature = get_feature(tg)
+#     feature = get_feature2(tg)
+#     res = np.array(lsh.query(feature))
+#     print(res)
 
 tg = cv2.imread('./target.jpg')
 feature = get_feature2(tg)

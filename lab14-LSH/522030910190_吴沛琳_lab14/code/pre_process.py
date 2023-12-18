@@ -55,11 +55,12 @@ def get_feature(img):
 
     return compute_one_hot(feature)
 
+
 def get_feature2(img):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     feature = skimage.feature.hog(img)
     feature = compute_one_hot2(feature)
-    return feature[:1000]
+    return feature[:10000]
 
 tg = cv2.imread('./target.jpg')
 paths = './Dataset'
